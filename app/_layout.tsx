@@ -33,10 +33,18 @@ export default function Layout() {
       .then(() => setLoadDB(true))
       .catch(() => setLoadDB(true));
   }, []);
+
+  if (!loadDB) {
+    return <FallbackView />;
+  }
   return (
     <Suspense fallback={<FallbackView />}>
       <SQLiteProvider databaseName="testSQLite.db" onInit={initTables} useSuspense>
-        <Stack />
+        <Stack>
+          <Stack.Screen name="addTask" options={{ headerShown: false }} />
+          <Stack.Screen name="details" />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+        </Stack>
       </SQLiteProvider>
     </Suspense>
   );

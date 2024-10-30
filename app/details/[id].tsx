@@ -2,13 +2,15 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Container } from '@/components/Container';
 import { ScreenContent } from '@/components/ScreenContent';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TextInput } from 'react-native';
 import { Button } from '@/components/Button';
 import { useSQLiteContext } from 'expo-sqlite';
+import { TaskTable } from '@/types/dbType';
 
 export default function Details() {
-  const { name } = useLocalSearchParams();
+  const { id } = useLocalSearchParams();
+  console.log('🚀 ~ Details ~ id:', id);
   const router = useRouter();
   const db = useSQLiteContext();
   const [task, setTask] = React.useState({
@@ -18,7 +20,12 @@ export default function Details() {
     createdAt: new Date().toString(),
     updatedAt: new Date().toString(),
   });
+  const idNumber = Number(id);
 
+  useEffect(() => {
+    if (!id) return;
+    fetchTaskById(idNumber);
+  }, [id]);
   const hanldeAddTask = async () => {
     try {
       const statement = await db.prepareAsync(
@@ -32,9 +39,35 @@ export default function Details() {
         task.updatedAt,
       ]);
 
-      router.replace('/');
+      statement.finalizeAsync();
+
+      router.replace('/addTask');
     } catch (error) {}
   };
+
+  async function fetchTaskById(id: number) {
+    const statement = await db.prepareAsync('SELECT * FROM tasks WHERE id = ?');
+    try {
+      const result = await statement.executeAsync([id]);
+      const task = await result.getAllAsync();
+      setTask(task[0] as TaskTable);
+    } catch (error) {}
+  }
+
+  async function hanldeUpdateTask() {
+    const statement = await db.prepareAsync(
+      'UPDATE tasks SET title = ?, description = ?, updatedAt = ? WHERE id = ?'
+    );
+
+    try {
+      await statement.executeAsync([task.title, task.description, task.updatedAt, idNumber]);
+
+      router.replace('/addTask');
+    } catch (error) {
+    } finally {
+      await statement.finalizeAsync();
+    }
+  }
 
   return (
     <>
@@ -54,7 +87,10 @@ export default function Details() {
           multiline
           numberOfLines={4}
         />
-        <Button title="Add Task" onPress={hanldeAddTask} />
+        <Button
+          title={id ? 'Update Task' : 'Add Task'}
+          onPress={id ? hanldeUpdateTask : hanldeAddTask}
+        />
       </Container>
     </>
   );

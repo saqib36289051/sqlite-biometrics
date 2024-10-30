@@ -1,54 +1,46 @@
-import { Stack, Link } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import React, { useEffect } from 'react';
-import { Container } from '@/components/Container';
-import { TaskTable } from '@/types/dbType';
-import { Button } from '@/components/Button';
-import { Pressable, Text, TouchableOpacity, View } from 'react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { Slot, Stack, useRouter } from 'expo-router';
 
-export default function Home() {
-  const db = useSQLiteContext();
-  const [taskList, setTaskList] = React.useState<TaskTable[]>([]);
+type Props = {};
 
-  const getAllTasks = async () => {
-    await db.getAllAsync<TaskTable>('SELECT * FROM tasks').then((result) => {
-      setTaskList(result);
-    });
-  };
-
+const Login = (props: Props) => {
+  const router = useRouter();
+  const [isCompatible, setIsCompatible] = React.useState(false);
   useEffect(() => {
-    getAllTasks();
+    checkCompatibility();
   }, []);
 
-  async function deleteTask(taskId: number) {
-    try {
-      const statement = await db.prepareAsync(`DELETE FROM tasks WHERE id = ?`);
-      await statement.executeAsync([taskId]).then(() => {
-        getAllTasks();
-      });
-    } catch (error) {}
+  if (isCompatible) {
+    onAuthenticate();
   }
 
+  async function checkCompatibility() {
+    const compatibilit = await LocalAuthentication.hasHardwareAsync();
+    setIsCompatible(compatibilit);
+  }
+
+  async function onAuthenticate() {
+    const auth = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Authenticate with Touch ID',
+      fallbackLabel: 'Enter Password',
+    });
+
+    if (auth.success) {
+      router.replace('/addTask');
+    }
+  }
   return (
-    <>
-      <Stack.Screen options={{ title: 'Home' }} />
-      <Container>
-        <Link href={{ pathname: '/details' }} asChild>
-          <Button title="Add New Task" />
-        </Link>
-        <View className="mt-4">
-          {taskList.map((task) => (
-            <View
-              className="m-2 flex-row items-center justify-between rounded-md bg-white p-4"
-              key={task.id}>
-              <Text>{task.title}</Text>
-              <TouchableOpacity onPress={() => deleteTask(task.id)}>
-                <Text>DELETE</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      </Container>
-    </>
+    <View className="flex-1 items-center justify-center">
+      <Text> Local Authentication</Text>
+      <Pressable onPress={onAuthenticate}>
+        <Text>Touch ID</Text>
+      </Pressable>
+    </View>
   );
-}
+};
+
+export default Login;
+
+const styles = StyleSheet.create({});
